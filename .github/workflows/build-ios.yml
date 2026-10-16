@@ -55,6 +55,7 @@ jobs:
         env:
           SIMULATOR_ID: ${{ steps.simulator.outputs.device_id }}
         run: |
+          xcrun simctl bootstatus "$SIMULATOR_ID" -b
           xcrun simctl install "$SIMULATOR_ID" build/simulator/Build/Products/Debug-iphonesimulator/TokenBar.app
           xcrun simctl launch "$SIMULATOR_ID" app.personal.tokenbar
           sleep 3

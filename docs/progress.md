@@ -18,6 +18,8 @@
 
 ## 尚待外部驗證（不是完成）
 
+- 首次 CI 已成功編譯 Swift，但 Xcode 16.4 / iOS 18.5 模擬器因缺少 `libswiftWebKit.dylib` 在測試啟動前崩潰。對照 [WebKit 293831](https://bugs.webkit.org/show_bug.cgi?id=293831) 後，將 CI 固定到 runner 已提供的 Xcode 26.3 / iOS 26.2，保留 iOS 17 部署目標。
+
 - 使用者提供／建立 GitHub repository 後執行 macOS workflow；目前沒有遠端目的地，也未上傳任何程式。
 - Xcode 編譯、11 項 native tests、未簽署 IPA 尚未由 Apple 工具產生。
 - Claude Team / ChatGPT 真實登入、官方用量比對、iPhone 13 卡片呈現及七天續簽，均未實測。

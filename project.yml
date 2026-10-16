@@ -1,0 +1,84 @@
+name: TokenBar
+options:
+  bundleIdPrefix: app.personal.tokenbar
+  deploymentTarget:
+    iOS: "17.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    TARGETED_DEVICE_FAMILY: "1"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+targets:
+  TokenBar:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+        excludes: [Resources]
+      - path: Shared
+      - path: App/Resources
+        buildPhase: resources
+    dependencies:
+      - target: TokenBarLiveActivity
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.personal.tokenbar
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: Generated/App-Info.plist
+      properties:
+        CFBundleDisplayName: Token Bar
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        LSRequiresIPhoneOS: true
+        NSSupportsLiveActivities: true
+        UIApplicationSupportsIndirectInputEvents: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
+        CFBundleURLTypes:
+          - CFBundleURLName: app.personal.tokenbar.refresh
+            CFBundleURLSchemes: [tokenbar]
+  TokenBarLiveActivity:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+      - path: Shared
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.personal.tokenbar.live
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        SKIP_INSTALL: YES
+    info:
+      path: Generated/Widget-Info.plist
+      properties:
+        CFBundleDisplayName: Token Bar 額度
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+  TokenBarTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [NativeTests]
+    dependencies:
+      - target: TokenBar
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: app.personal.tokenbar.tests
+schemes:
+  TokenBar:
+    build:
+      targets:
+        TokenBar: all
+    test:
+      targets: [TokenBarTests]
+      gatherCoverageData: false

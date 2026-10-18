@@ -138,6 +138,8 @@ struct ProviderState {
     func activitySummary(provider: Provider) -> ActivityProvider {
         ActivityProvider(provider: provider, windows: Array((snapshot?.windows ?? []).prefix(2)),
                          fetchedAt: snapshot?.fetchedAt,
-                         notice: !enabled ? "尚未連接" : error?.shortMessage ?? (snapshot == nil ? "尚無資料" : ""))
+                         notice: !enabled ? "尚未連接" : error?.shortMessage ?? (snapshot == nil ? "尚無資料" : ""),
+                         plan: snapshot?.plan, nextRefreshAt: nextAllowedRefresh.timeIntervalSince1970,
+                         refreshing: isRefreshing)
     }
 }

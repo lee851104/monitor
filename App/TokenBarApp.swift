@@ -2,7 +2,7 @@ import SwiftUI
 
 @main
 struct TokenBarApp: App {
-    @StateObject private var store = QuotaStore()
+    @StateObject private var store = QuotaStore.shared
 
     var body: some Scene {
         WindowGroup {

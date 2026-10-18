@@ -1,8 +1,8 @@
 # Token Bar — iPhone 額度卡片
 
-給 iPhone 13 的 Claude Team / Codex 訂閱額度檢視器。手機直接查詢；點鎖定畫面卡片開 App 刷新，不需要電腦持續開機。
+給 iPhone 13 的 Claude Team / Codex 訂閱額度檢視器。手機直接查詢，鎖定畫面左右並排顯示剩餘額度、服務圖示及方案名稱，不需要電腦持續開機。
 
-**已通過 GitHub macOS 建置：21 項資料層、7 項打包及 11 項 iOS 原生測試，並產生未簽署 IPA。仍需透過 AltStore 簽署安裝；真實帳號登入及 iPhone 13 即時動態尚待實機檢查。**
+**0.2.0 新增鎖屏背景更新按鈕。建置與測試結果以對應 GitHub Actions 執行為準；真實帳號在鎖屏背景更新仍需實機確認。IPA 必須使用自己的 Apple 帳號簽署後安裝。**
 
 ## 功能與限制
 
@@ -10,7 +10,7 @@
 - Claude 多組織需要明確選擇 Team，切換空間會清除舊數字。
 - 兩家各自登入、刷新、登出；每家顯示最後成功讀取時間。
 - App 前景約每 60 秒嘗試刷新，手動刷新至少間隔 5 秒；限流依來源要求等待。
-- 即時動態在 iPhone 13 鎖定畫面呈現，點擊開 App 刷新。它不是永久通知，最多運作八小時，也可能被系統提前結束。到期回 App 重新開啟。
+- 即時動態限制在 160 點高，底部 44 點高的按鈕會在背景嘗試刷新；點卡片其他位置會開 App。它不是永久通知，最多運作八小時，也可能被系統提前結束。到期回 App 重新開啟。
 - 卡片不能在背景每分鐘查詢。超過五分鐘或到達重置時間標為待更新，不能因倒數結束就假定額度已恢復。
 - 最低 iOS 17；目標使用者裝置為 iPhone 13 / iOS 26.3.1，尚待該裝置實測。
 - 不使用 App Groups、推播或共用 Keychain，降低免費側載所需權限；免費簽署保留 extension 的相容性仍須實機確認。
@@ -34,6 +34,8 @@
 
 ## 第二步：用 Windows 免費側載
 
+已使用 iloader 安裝的使用者：連接並信任 iPhone，在 iloader 登入原本的 Apple 帳號，使用 **Import IPA** 選擇新版檔案覆蓋安裝。保留原本 Bundle ID 與 extension，不要先刪除手機上的 App，以保留登入資料。升級後開 App 刷新，結束舊卡片再重新開啟。
+
 依照 [AltStore 官方 Windows 安裝文件](https://faq.altstore.io/altstore-classic/how-to-install-altstore-windows) 安裝 **AltServer / AltStore Classic**，不要使用網路販售的企業憑證。
 
 1. Windows 安裝官方文件要求的 Apple 驅動／iTunes／iCloud，啟動 AltServer。
@@ -52,15 +54,15 @@
 3. 連接 Codex，以你的 ChatGPT 帳號登入，按「完成並查詢」。
 4. 至少取得一家的數字後，按「開啟額度卡片」。如需要，去「設定 → Token Bar」允許即時動態。
 5. 鎖定手機查看卡片；也請測試你在解鎖時下拉通知中心的顯示方式。iOS 決定卡片呈現位置，不能保證永久固定。
-6. 點卡片會開啟 App，重新查詢兩家；確認「讀取於」時間更新後可回到原本工作。
+6. 點底部「更新剩餘額度」會在背景嘗試查詢兩家；來源限流時遵守冷卻時間。需要登入或網站驗證時，點卡片其他位置開 App 處理。系統可能要求解鎖，背景執行不保證每次成功。
 
-登入 Cookie 留在本機 WebKit。程式只對官方網站 GET 組織清單、登入狀態和額度；不發送模型訊息、不兌換重置、不代付費。Codex 的 session token 只在隔離的網頁執行環境中用於官方額度請求，不返回 Swift、CI 或第三方。
+登入 Cookie 儲存在本機 WebKit。背景更新會暫時將 Cookie 讀入 App 記憶體，只傳給對應官方 HTTPS 網站，拒絕重新導向。Codex 存取權杖只在記憶體用於官方額度請求，不寫入設定、日誌、卡片或 CI。程式只 GET 組織清單、登入狀態和額度，不發送模型訊息、不兌換重置、不代付費。
 
 **資料來源不是穩定公開 API。** Claude Team 權限、Cloudflare、SSO、ChatGPT 網頁登入格式都可能阻止讀取。若收到登入／網站驗證／權限／格式錯誤，App 會明示；不以假資料或 token 計數代替真實訂閱額度。真實帳號尚未在此開發環境驗證。
 
 ## 每七天續簽
 
-在到期前（建議第六天）開啟 Windows 的 AltServer，讓手機與它連線，再到 AltStore → My Apps → **Refresh All**。依 [AltStore Getting Started](https://faq.altstore.io/altstore-classic/your-altstore) 確認剩餘天數已恢復。
+使用 iloader 時，在到期前（建議第六天）連接 Windows，以相同帳號重新簽署並覆蓋安裝 IPA。使用 AltStore 時，開啟 Windows 的 AltServer，讓手機與它連線，再到 AltStore → My Apps → **Refresh All**。依 [AltStore Getting Started](https://faq.altstore.io/altstore-classic/your-altstore) 確認剩餘天數已恢復。
 
 日常查額度時電腦可以關機。Token Bar 裡的「我剛完成續簽」只記錄提醒日期，不會替 App 簽名，也不會自動知道真正的憑證到期日。
 

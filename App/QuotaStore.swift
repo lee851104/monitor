@@ -1,14 +1,18 @@
 import Foundation
 import Combine
+import ActivityKit
+import WebKit
 
 @MainActor
 final class QuotaStore: ObservableObject {
+    static let shared = QuotaStore()
     @Published private(set) var states: [Provider: ProviderState]
     @Published private(set) var signingReminder: Date
     let activities = ActivityController()
     private(set) var sessions: [Provider: BrowserSession]
     private var generations: [Provider: Int] = [.claude: 0, .codex: 0]
     private let defaults = UserDefaults.standard
+    private let backgroundClient = NativeQuotaClient()
 
     init() {
         states = Dictionary(uniqueKeysWithValues: Provider.allCases.map {
@@ -16,6 +20,26 @@ final class QuotaStore: ObservableObject {
         })
         sessions = Dictionary(uniqueKeysWithValues: Provider.allCases.map { ($0, BrowserSession(provider: $0)) })
         signingReminder = UserDefaults.standard.object(forKey: "renewedAt") as? Date ?? Date()
+        for provider in Provider.allCases {
+            if let saved = defaults.object(forKey: "refreshAfter." + provider.rawValue) as? Double {
+                states[provider]?.nextAllowedRefresh = Date(timeIntervalSince1970: saved)
+            }
+            if let raw = defaults.string(forKey: "refreshError." + provider.rawValue) {
+                states[provider]?.error = QuotaError(rawValue: raw)
+            }
+        }
+        if let content = Activity<QuotaActivityAttributes>.activities
+            .filter({ $0.activityState == .active || $0.activityState == .stale })
+            .max(by: { $0.attributes.startedAt < $1.attributes.startedAt })?.content.state {
+            for summary in [content.claude, content.codex] where states[summary.provider]?.enabled == true {
+                if let timestamp = summary.fetchedAt {
+                    states[summary.provider]?.snapshot = ProviderSnapshot(provider: summary.provider,
+                        windows: summary.windows, fetchedAt: timestamp, plan: summary.plan ?? "",
+                        organizationID: summary.provider == .claude ? defaults.string(forKey: "claude.organization") : nil,
+                        accountLabel: "")
+                }
+            }
+        }
         if UserDefaults.standard.object(forKey: "renewedAt") == nil {
             UserDefaults.standard.set(signingReminder, forKey: "renewedAt")
         }
@@ -78,21 +102,41 @@ final class QuotaStore: ObservableObject {
         _ = await (claude, codex)
     }
 
+    func refreshFromActivity() async {
+        // Lock-screen actions may run without presenting the app.
+        guard Activity<QuotaActivityAttributes>.activities.contains(where: {
+            $0.activityState == .active || $0.activityState == .stale
+        }) else { return }
+        async let claude: Void = refresh(.claude, background: true)
+        async let codex: Void = refresh(.codex, background: true)
+        _ = await (claude, codex)
+    }
+
     func startActivity() async {
         await activities.start(currentStates: { self.states })
     }
 
-    func refresh(_ provider: Provider, automatic: Bool = false) async {
+    func refresh(_ provider: Provider, automatic: Bool = false, background: Bool = false) async {
         guard states[provider]?.canRefresh(at: Date(), automatic: automatic) == true,
               let browser = sessions[provider] else { return }
         let generation = generations[provider, default: 0]
         states[provider]?.isRefreshing = true
-        let result = await browser.collect(organization: provider == .claude ? organizationID : nil)
+        if background { await activities.update(states: states) }
+        let result: QuotaResult
+        if background {
+            let cookies = await WKWebsiteDataStore.default().httpCookieStore.allCookies()
+            result = await backgroundClient.collect(provider: provider,
+                organization: provider == .claude ? organizationID : nil, cookies: cookies)
+        } else {
+            result = await browser.collect(organization: provider == .claude ? organizationID : nil)
+        }
         guard generation == generations[provider] else { return }
-        if result.code == .login || result.status == "selectOrganization" {
+        if !background && (result.code == .login || result.status == "selectOrganization") {
             activities.invalidateIdentity()
         }
         states[provider]?.apply(result, provider: provider, now: Date())
+        defaults.set(states[provider]?.nextAllowedRefresh.timeIntervalSince1970, forKey: "refreshAfter." + provider.rawValue)
+        defaults.set(states[provider]?.error?.rawValue, forKey: "refreshError." + provider.rawValue)
         if provider == .claude, result.status == "ok", let selected = result.snapshot?.organizationID {
             defaults.set(selected, forKey: "claude.organization")
         }

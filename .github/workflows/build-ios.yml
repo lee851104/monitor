@@ -50,6 +50,8 @@ jobs:
             build/TokenBar.xcarchive/Products/Applications/TokenBar.app \
             build/TokenBar-unsigned.ipa
           shasum -a 256 build/TokenBar-unsigned.ipa > build/TokenBar-unsigned.sha256
+      - name: Export card render previews
+        run: xcrun xcresulttool export attachments --path build/NativeTests.xcresult --output-path build/card-previews
       - name: Capture initial screen (no account data)
         continue-on-error: true
         env:
@@ -68,6 +70,7 @@ jobs:
             build/TokenBar-unsigned.ipa
             build/TokenBar-unsigned.sha256
             build/initial-screen.png
+            build/card-previews
           if-no-files-found: error
           retention-days: 14
       - name: Upload native test result

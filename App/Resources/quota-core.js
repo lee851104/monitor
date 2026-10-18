@@ -53,6 +53,38 @@
     }
     return snapshot('codex', windows, timestamp, clean(payload.plan_type));
   }
+  function claudePlan(org) {
+    const display = clean(org.plan_display_name || org.plan_display_label);
+    if (display) return display;
+    const labels = { claude_team: 'Team', chat_team: 'Team', claude_enterprise: 'Enterprise',
+      claude_max: 'Max', claude_pro: 'Pro', claude_free: 'Free' };
+    if (labels[org.analytics_subscription_plan]) return labels[org.analytics_subscription_plan];
+    const capabilities = Array.isArray(org.capabilities) ? org.capabilities : [];
+    for (const key of ['claude_enterprise', 'claude_team', 'chat_team', 'claude_max', 'claude_pro']) {
+      if (capabilities.includes(key)) return labels[key];
+    }
+    return '';
+  }
+  function claudeSelection(raw, organizationID) {
+    if (!Array.isArray(raw)) throw new Failure('format');
+    const organizations = raw.map(org => {
+      if (!object(org) || typeof org.uuid !== 'string' || !/^[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12}$/.test(org.uuid)) {
+        throw new Failure('format');
+      }
+      return { id: org.uuid, name: clean(org.name) || '未命名空間', plan: claudePlan(org) };
+    });
+    if (!organizations.length) throw new Failure('forbidden');
+    const selected = organizations.find(org => org.id === organizationID)
+      || (!organizationID && organizations.length === 1 ? organizations[0] : null);
+    return selected ? { status: 'ready', selected, organizations } : { status: 'selectOrganization', organizations };
+  }
+  function claudeUsage(data, selection, timestamp) {
+    const result = parseClaude(data, timestamp);
+    result.organizationID = selection.selected.id;
+    result.accountLabel = selection.selected.name;
+    result.plan = selection.selected.plan;
+    return { status: 'ok', snapshot: result, organizations: selection.organizations };
+  }
   function retrySeconds(header, now) {
     const numeric = header !== null && /^\d+(\.\d+)?$/.test(header.trim()) ? Number(header) : NaN;
     const value = Number.isFinite(numeric) ? numeric : (Date.parse(header) / 1000 - now);
@@ -93,22 +125,10 @@
       if (!expected || env.origin !== expected) throw new Failure('login');
       if (provider === 'claude') {
         const raw = await request(env, '/api/organizations');
-        if (!Array.isArray(raw)) throw new Failure('format');
-        const organizations = raw.map(org => {
-          if (!object(org) || typeof org.uuid !== 'string' || !/^[a-fA-F0-9]{8}-(?:[a-fA-F0-9]{4}-){3}[a-fA-F0-9]{12}$/.test(org.uuid)) {
-            throw new Failure('format');
-          }
-          return { id: org.uuid, name: clean(org.name) || '未命名空間' };
-        });
-        if (organizations.length === 0) throw new Failure('forbidden');
-        const selected = organizations.find(org => org.id === organizationID)
-          || (!organizationID && organizations.length === 1 ? organizations[0] : null);
-        if (!selected) return { status: 'selectOrganization', organizations };
-        const data = await request(env, `/api/organizations/${selected.id}/usage`);
-        const result = parseClaude(data, env.now());
-        result.organizationID = selected.id;
-        result.accountLabel = selected.name;
-        return { status: 'ok', snapshot: result, organizations };
+        const selection = claudeSelection(raw, organizationID);
+        if (selection.status !== 'ready') return selection;
+        const data = await request(env, `/api/organizations/${selection.selected.id}/usage`);
+        return claudeUsage(data, selection, env.now());
       }
       const session = await request(env, '/api/auth/session');
       if (!object(session) || typeof session.accessToken !== 'string' || !session.accessToken) throw new Failure('login');
@@ -122,7 +142,7 @@
         retryAfter: error instanceof Failure ? error.retryAfter : 0 };
     }
   }
-  const core = { parseClaude, parseCodex, collect };
+  const core = { parseClaude, parseCodex, claudeSelection, claudeUsage, collect };
   root.QuotaCore = core;
   if (typeof module !== 'undefined') module.exports = core;
 })(globalThis);

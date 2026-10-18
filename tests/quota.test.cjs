@@ -5,6 +5,43 @@ const core = require('../App/Resources/quota-core.js');
 const now = 1792195200;
 const orgA = '11111111-1111-4111-8111-111111111111';
 const orgB = '22222222-2222-4222-8222-222222222222';
+
+test('Claude plan comes from the selected organization, not its name or another workspace', async () => {
+  const env = environment('claude', [
+    { url: '/api/organizations', response: reply([
+      { uuid: orgA, name: 'Personal', capabilities: ['chat', 'claude_pro'] },
+      { uuid: orgB, name: 'Work', analytics_subscription_plan: 'claude_team' },
+    ]) },
+    { url: `/api/organizations/${orgB}/usage`, response: reply(claude) },
+  ]);
+  const result = await core.collect('claude', orgB, env);
+  assert.equal(result.snapshot.plan, 'Team');
+  assert.equal(core.claudeSelection([{ uuid: orgA, name: 'Team' }], orgA).selected.plan, '');
+  env.assertDone();
+});
+
+test('Claude plan changes and unknown plans never become a hardcoded Team label', () => {
+  for (const [metadata, expected] of [
+    [{ capabilities: ['chat', 'claude_pro'] }, 'Pro'],
+    [{ capabilities: ['chat', 'claude_max'] }, 'Max'],
+    [{ analytics_subscription_plan: 'claude_enterprise' }, 'Enterprise'],
+    [{ analytics_subscription_plan: 'claude_free' }, 'Free'],
+    [{ plan_display_name: 'Max 20x' }, 'Max 20x'],
+    [{}, ''],
+  ]) {
+    assert.equal(core.claudeSelection([{ uuid: orgA, name: 'Example', ...metadata }], null).selected.plan, expected);
+  }
+});
+
+test('native and browser Claude collectors share selection and quota parsing', () => {
+  const selection = core.claudeSelection([{ uuid: orgA, name: 'Work', capabilities: ['chat', 'claude_team'] }], null);
+  const result = core.claudeUsage(claude, selection, now);
+  assert.equal(result.status, 'ok');
+  assert.equal(result.snapshot.plan, 'Team');
+  assert.equal(result.snapshot.organizationID, orgA);
+  assert.equal(result.snapshot.windows[1].usedPercent, 63.5);
+  assert.equal(core.claudeSelection([{ uuid: orgA, name: 'Work' }], orgB).status, 'selectOrganization');
+});
 const claude = {
   five_hour: { utilization: 0, resets_at: '2026-10-17T05:00:00Z' },
   seven_day: { utilization: 63.5, resets_at: '2026-10-20T00:00:00Z' },

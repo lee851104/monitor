@@ -44,7 +44,7 @@ struct DashboardView: View {
                             .font(.subheadline.bold())
                         Text("下次記得續簽：\(store.signingReminder.addingTimeInterval(6 * 86400).formatted(date: .abbreviated, time: .omitted))")
                             .font(.subheadline)
-                        Text("這是你手動標記的提醒日期，不是憑證狀態。請在七天到期前用 AltStore 續簽。")
+                        Text("這是你手動標記的提醒日期，不是憑證狀態。請在七天到期前用 iloader 或 AltStore 續簽。")
                             .font(.caption).foregroundStyle(.secondary)
                         Button("我剛完成續簽") { store.markRenewed() }
                             .font(.subheadline).frame(minHeight: 44)
@@ -113,7 +113,7 @@ private struct ProviderCard: View {
                 RoundedRectangle(cornerRadius: 3).fill(accent).frame(width: 6, height: 28)
                 Text(provider.title).font(.title2.bold())
                 if let plan = state.snapshot?.plan, !plan.isEmpty {
-                    Text(plan.uppercased()).font(.caption.bold()).foregroundStyle(.secondary)
+                    Text(state.activitySummary(provider: provider).planLabel).font(.caption.bold()).foregroundStyle(.secondary)
                 }
                 Spacer()
                 if state.isRefreshing { ProgressView().accessibilityLabel("正在刷新") }
@@ -227,7 +227,7 @@ private struct ActivityControls: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("鎖定畫面額度卡片", systemImage: "rectangle.bottomthird.inset.filled")
                 .font(.headline)
-            Text("點卡片即可開 App 刷新。單次最多八小時；背景期間顯示的是最後一次讀取的數字。")
+            Text("按卡片的更新按鈕會嘗試背景查詢；點其他位置開 App。單次最多八小時，數字為最後成功讀取的額度。")
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
                 Button(controller.isActive ? "重新開啟八小時卡片" : "開啟額度卡片") {

@@ -52,16 +52,6 @@ jobs:
           shasum -a 256 build/TokenBar-unsigned.ipa > build/TokenBar-unsigned.sha256
       - name: Export card render previews
         run: xcrun xcresulttool export attachments --path build/NativeTests.xcresult --output-path build/card-previews
-      - name: Capture initial screen (no account data)
-        continue-on-error: true
-        env:
-          SIMULATOR_ID: ${{ steps.simulator.outputs.device_id }}
-        run: |
-          xcrun simctl bootstatus "$SIMULATOR_ID" -b
-          xcrun simctl install "$SIMULATOR_ID" build/simulator/Build/Products/Debug-iphonesimulator/TokenBar.app
-          xcrun simctl launch "$SIMULATOR_ID" app.personal.tokenbar
-          sleep 3
-          xcrun simctl io "$SIMULATOR_ID" screenshot build/initial-screen.png
       - name: Upload unsigned IPA
         uses: actions/upload-artifact@v4
         with:
@@ -69,7 +59,6 @@ jobs:
           path: |
             build/TokenBar-unsigned.ipa
             build/TokenBar-unsigned.sha256
-            build/initial-screen.png
             build/card-previews
           if-no-files-found: error
           retention-days: 14

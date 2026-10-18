@@ -1,5 +1,14 @@
 # 進度 — 2026-10-17-token-bar-ios
 
+## 2026-10-18：0.2.0 卡片更新
+
+- 使用者已確認 0.1.0 透過 Windows iloader 免費側載成功，Claude Team 與 Codex 額度可讀取。
+- 核准版面：左右並排、Claude 星芒／OpenAI 結形標誌、實際方案標籤、剩餘進度條、44 點高的更新按鈕。原生卡片收斂在 160 點高。
+- 背景更新改用 LiveActivityIntent 在 App 程序執行；以 WebKit 現有 Cookie 在記憶體發出官方 HTTPS GET，拒絕重新導向，沿用資料解析、冷卻與身分切換保護。
+- 獨立審查發現初始化順序及鎖屏按鈕可能永久停用問題，均已修正；按鈕始終可點，請求冷卻由 App 狀態處理。
+- 本機 24 項 Node、7 項 Python 測試通過。GitHub 執行原生測試、真機 archive 與卡片渲染，結果以各次 Actions 紀錄為準。
+- 真實帳號的鎖屏背景更新、登入 Cookie 在背景的可用性與更新後側載，仍需實機確認。下方為舊版開發紀錄。
+
 - 使用者已授權依前述規格開發與免費七天續簽，不再要求重複核准。
 - workspace 根目錄不是 Git repository，既有 vendor-review 是另一個 Windows 專案；以獨立 ios/ 資料夾隔離，不改動舊專案。
 - 本機有 Node/Python，沒有 Swift、Xcode；使用 GitHub macOS CI。GitHub CLI 已下載到 workspace 的 build-tools，沒有放進程式碼。
